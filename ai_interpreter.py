@@ -98,7 +98,7 @@ Important:
 - When a post describes personal suffering without attacking anyone, the
   rationale should explicitly note its non-hostile or vulnerable nature.
 - For physical marker selection, distinguish:
-  dark red = extreme hostility / dehumanization / threats;
+  black = extreme hostility / dehumanization / threats;
   red = anger or attacks on people;
   orange = heated conflict or agitation;
   yellow = tension, doubt, or uncertainty;
