@@ -14,6 +14,10 @@ class MarkerPaletteTests(unittest.TestCase):
         self.assertEqual([m.number for m in MARKERS], list(range(1, 9)))
         self.assertEqual(len({m.hex_color for m in MARKERS}), 8)
 
+    def test_most_extreme_marker_is_black(self):
+        self.assertEqual(MARKERS[0].name, "Black")
+        self.assertEqual(MARKERS[0].hex_color, "#000000")
+
     def test_each_emotional_category(self):
         scenarios = [
             ({"valence": -0.95, "aggression": 0.95, "dehumanizing": 0.8}, 1),
