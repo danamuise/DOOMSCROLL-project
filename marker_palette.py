@@ -18,7 +18,7 @@ class Marker:
 
 
 MARKERS = (
-    Marker(1, "Dark red", "#78212B", "Extreme hostility"),
+    Marker(1, "Black", "#000000", "Extreme hostility"),
     Marker(2, "Red", "#CE353F", "Anger/attack"),
     Marker(3, "Orange", "#E67B2C", "Heated conflict"),
     Marker(4, "Yellow", "#E5B83B", "Tension/uncertainty"),
@@ -55,7 +55,7 @@ def emotion_to_marker(interpretation: Mapping[str, float]) -> Marker:
     if dehumanizing >= 0.60 or violence >= 0.60 or (
         aggression >= 0.85 and valence <= -0.55
     ):
-        return MARKERS[0]  # Dark red: extreme hostility
+        return MARKERS[0]  # Black: extreme hostility
     if dehumanizing >= 0.35 or violence >= 0.35 or aggression >= 0.65:
         return MARKERS[1]  # Red: direct attack, contempt or violent rhetoric
 
