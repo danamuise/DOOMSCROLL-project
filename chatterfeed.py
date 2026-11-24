@@ -117,4 +117,15 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="DOOMSCROLLER social-media installation")
+    parser.add_argument("--gui", action="store_true", help="Open the Tkinter desktop interface")
+    parser.add_argument("--demo", action="store_true", help="Preview the GUI using sample posts (no API key required)")
+    args = parser.parse_args()
+
+    if args.gui or args.demo:
+        from display.gui_display import launch
+        launch(demo=args.demo)
+    else:
+        main()
