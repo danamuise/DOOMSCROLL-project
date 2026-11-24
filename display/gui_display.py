@@ -2,11 +2,13 @@
 
 The Tk UI runs on the main thread; the social feed, OpenAI requests, and
 connectivity checks run in worker threads and communicate via a queue.
-The File, Settings, and Status headings are visual placeholders for now.
+The File menu supports Pause/Resume Feed; its other commands and the Settings
+and Status headings are visual placeholders for now.
 """
 
 from __future__ import annotations
 
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime
 import os
@@ -94,6 +96,8 @@ class DoomscrollGUI:
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         self.events: queue.Queue = queue.Queue()
         self.stopped = threading.Event()
+        self.paused = threading.Event()
+        self.deferred_feed_events: deque[tuple] = deque()
         self.connected_since: float | None = None
         self.posts: dict[int, dict] = {}
         self.post_ids: list[int] = []
@@ -108,10 +112,29 @@ class DoomscrollGUI:
 
         menu = tk.Frame(outer, bg="#686868", height=29)
         menu.pack(fill="x", pady=(0, 3))
-        for title in ("File", "Settings", "Status"):
+        file_button = tk.Menubutton(
+            menu, text="File", font=("Courier New", 13),
+            fg="#FFFFFF", bg="#686868", activeforeground="#FFFFFF",
+            activebackground="#777777", relief="flat", bd=0,
+            highlightthickness=0, padx=17, pady=4,
+        )
+        file_button.pack(side="left")
+        self.file_menu = tk.Menu(
+            file_button, tearoff=False, bg="#FFFFFF", fg="#111111",
+            activebackground="#DDDDDD", activeforeground="#000000",
+            font=("Courier New", 13), bd=1,
+        )
+        file_button.configure(menu=self.file_menu)
+        self.file_menu.add_command(label="Pause Feed", command=self._toggle_feed_pause)
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Reset Arm", state="disabled")
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Restart Pi-4", state="disabled")
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Quit", state="disabled")
+        for title in ("Settings", "Status"):
             tk.Label(menu, text=title, font=("Courier New", 13), fg="#FFFFFF",
                      bg="#686868", padx=17, pady=4).pack(side="left")
-        # Deliberately no menu commands while controls are being developed.
 
         project_root = Path(__file__).resolve().parent.parent
         logo_path = project_root / "DoomScrollLogo.png"
@@ -146,6 +169,21 @@ class DoomscrollGUI:
         scroll.config(command=self.feed.yview)
         self.feed.tag_configure("meta", foreground=NORMAL_TEXT)
         self.feed.tag_configure("warning", foreground=STATUS_RED)
+
+    def _toggle_feed_pause(self):
+        """Pause/resume the incoming feed without affecting the connection clock."""
+        if self.paused.is_set():
+            self.paused.clear()
+            self.file_menu.entryconfigure(0, label="Pause Feed")
+        else:
+            self.paused.set()
+            self.file_menu.entryconfigure(0, label="Resume Feed")
+
+    def _wait_for_resume(self) -> bool:
+        """Worker thread waits here until resumed or the window closes."""
+        while self.paused.is_set() and not self.stopped.is_set():
+            self.stopped.wait(0.1)
+        return not self.stopped.is_set()
 
     def _render_post(self, post_id: int):
         post = self.posts[post_id]
@@ -227,8 +265,16 @@ class DoomscrollGUI:
     def _drain_events(self):
         try:
             for _ in range(30):
-                event = self.events.get_nowait()
+                if not self.paused.is_set() and self.deferred_feed_events:
+                    event = self.deferred_feed_events.popleft()
+                else:
+                    event = self.events.get_nowait()
                 kind, *args = event
+                if self.paused.is_set() and kind in ("new_post", "interpretation_seq"):
+                    # An API call may have finished just as Pause was pressed.
+                    # Retain its UI update until the user resumes.
+                    self.deferred_feed_events.append(event)
+                    continue
                 if kind == "connection":
                     is_online = args[0]
                     if is_online and self.connected_since is None:
@@ -282,6 +328,8 @@ class DoomscrollGUI:
             posts = demo_posts()
             count = 0
             while not self.stopped.is_set():
+                if not self._wait_for_resume():
+                    break
                 m = next(posts)
                 count += 1
                 selected = count % 3 == 0
@@ -305,7 +353,7 @@ class DoomscrollGUI:
             hold = max(0.0, float(os.getenv("CHATTERFEED_DRAW_SECONDS", "10")))
             with ThreadPoolExecutor(max_workers=1, thread_name_prefix="interpreter") as pool:
                 for message in source.stream():
-                    if self.stopped.is_set():
+                    if not self._wait_for_resume():
                         break
                     posts_until_selection -= 1
                     selected = posts_until_selection == 0
@@ -321,6 +369,8 @@ class DoomscrollGUI:
                     info = {"source": message["source"], "subject": message["subject"],
                             "timestamp": message["timestamp"], "safe_text": safe,
                             "selected": selected, "hold": hold, "interpretation": None}
+                    if not self._wait_for_resume():
+                        break
                     self.events.put(("new_post", info))
                     # The GUI assigns IDs and matches updates via this exact
                     # info dictionary, which stays on the event queue.
