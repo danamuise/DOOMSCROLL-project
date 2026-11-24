@@ -112,8 +112,11 @@ class DoomscrollGUI:
                      bg="#686868", padx=17, pady=4).pack(side="left")
         # Deliberately no menu commands while controls are being developed.
 
-        logo_path = Path(__file__).resolve().parent.parent / "assets" / "DoomScrollLogo.png"
-        if logo_path.exists():
+        project_root = Path(__file__).resolve().parent.parent
+        logo_path = project_root / "DoomScrollLogo.png"
+        if not logo_path.is_file():
+            logo_path = project_root / "assets" / "DoomScrollLogo.png"
+        if logo_path.is_file():
             image = tk.PhotoImage(file=str(logo_path))
             self.logo_image = image.subsample(2, 2)
             tk.Label(outer, image=self.logo_image, bg="#FFFFFF", anchor="w",
