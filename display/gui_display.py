@@ -171,13 +171,14 @@ class DoomscrollGUI:
         self.feed.tag_configure("warning", foreground=STATUS_RED)
 
     def _toggle_feed_pause(self):
-        """Pause/resume the incoming feed without affecting the connection clock."""
+        """Pause/resume incoming posts, and immediately update the status label."""
         if self.paused.is_set():
             self.paused.clear()
             self.file_menu.entryconfigure(0, label="Pause Feed")
         else:
             self.paused.set()
             self.file_menu.entryconfigure(0, label="Resume Feed")
+        self._update_status_label()
 
     def _wait_for_resume(self) -> bool:
         """Worker thread waits here until resumed or the window closes."""
@@ -300,10 +301,18 @@ class DoomscrollGUI:
         if not self.stopped.is_set():
             self.root.after(100, self._drain_events)
 
+    def _update_status_label(self):
+        if self.paused.is_set():
+            self.status.config(text="Status: Paused", fg=STATUS_RED)
+        else:
+            connected = self.connected_since is not None
+            self.status.config(
+                text=f"Status: {connection_label(self.connected_since, time.monotonic())}",
+                fg=STATUS_GREEN if connected else STATUS_RED,
+            )
+
     def _refresh_status(self):
-        connected = self.connected_since is not None
-        self.status.config(text=f"Status: {connection_label(self.connected_since, time.monotonic())}",
-                           fg=STATUS_GREEN if connected else STATUS_RED)
+        self._update_status_label()
         if not self.stopped.is_set():
             self.root.after(1000, self._refresh_status)
 
