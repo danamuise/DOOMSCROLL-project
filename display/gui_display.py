@@ -26,7 +26,8 @@ from sources.combined_source import CombinedSource
 
 BACKGROUND = "#393939"
 CONSOLE_BG = "#050505"
-NORMAL_TEXT = "#BDBDBD"
+NORMAL_TEXT = "#E5E5E5"
+FEED_FONT = ("Consolas", 13, "bold")
 STATUS_GREEN = "#00EA00"
 STATUS_RED = "#FF5050"
 MAX_POSTS = 500
@@ -137,7 +138,7 @@ class DoomscrollGUI:
         scroll = tk.Scrollbar(frame, orient="vertical")
         scroll.pack(side="right", fill="y")
         self.feed = tk.Text(frame, bg=CONSOLE_BG, fg=NORMAL_TEXT,
-                            font=("Courier New", 10), wrap="word", padx=17, pady=10,
+                            font=FEED_FONT, wrap="word", padx=17, pady=10,
                             insertwidth=0, cursor="arrow", relief="flat", bd=0,
                             highlightthickness=0, state="disabled",
                             yscrollcommand=scroll.set)
@@ -181,7 +182,7 @@ class DoomscrollGUI:
                 foreground, background = selected_color(interpretation)
                 self.feed.tag_configure(colored_tag, foreground=foreground,
                                          background=background,
-                                         font=("Courier New", 10, "bold"))
+                                         font=FEED_FONT)
                 add(f"Score:   {round(100 * interpretation['valence']):+d}/100  "
                     f"Intensity: {round(100 * interpretation['intensity'])}/100\n", colored_tag)
                 add(f"Rationale: {interpretation.get('rationale', '')}\n", colored_tag)
@@ -190,7 +191,7 @@ class DoomscrollGUI:
             else:
                 self.feed.tag_configure(colored_tag, foreground="#51C5F4",
                                          background=CONSOLE_BG,
-                                         font=("Courier New", 10, "bold"))
+                                         font=FEED_FONT)
                 add((f"Score:   unavailable ({error})\n" if error else "Score:   interpreting with AI...\n"), colored_tag)
                 add(f"[AI SELECTED - DRAW HOLD {post['hold']:g}s]\n", colored_tag)
             add("\n")
